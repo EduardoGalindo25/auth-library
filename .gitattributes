@@ -1,0 +1,8 @@
+# Excluir tests, documentación y configuraciones locales
+/tests/ export-ignore
+/.github/ export-ignore
+/.vscode/ export-ignore
+/.idea/ export-ignore
+/.DS_Store export-ignore
+/composer.lock export-ignore
+README.md export-ignore

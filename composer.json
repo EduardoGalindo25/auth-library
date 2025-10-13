@@ -1,0 +1,24 @@
+{
+    "name": "gabogalro/auth-middleware",
+    "description": "Authentication middleware for PHP applications.",
+    "type": "library",
+    "license": "MIT",
+    "authors": [
+        {
+            "name": "gabogalro",
+            "email": "eduardogalro32@gmail.com"
+        }
+    ],
+    "require": {
+        "php": ">=7.4",
+        "gabogalro/sql-helpers": "^1.0"
+    },
+    "autoload": {
+        "psr-4": {
+            "gabogalro\\responseHelpers\\": "src/"
+        }
+    },
+    "require-dev": {
+        "vlucas/phpdotenv": "^5.6"
+    }
+}
