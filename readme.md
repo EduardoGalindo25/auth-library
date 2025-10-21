@@ -1,106 +1,156 @@
-# 🚀 gabogalro/auth-middleware
+# 🚀 gabogalro/auth-library
 
-- Middleware de autenticación para APIs en PHP, pensado para integrarse con el gabogalro/router.
-- Permite proteger rutas mediante tokens de acceso **Bearer token** generados por la librería Token, evitando el acceso no autorizado.
+- Libreria para generar tokens de autorización en headers que permite una protección de rutas adecuada.
 
 ## Instalación
 
 ```bash
-composer require gabogalro/auth-middleware
+composer require gabogalro/auth-library
 ```
 
 ## Guia de uso
 
-- Tu token se envía en el header HTTP Authorization en el formato:
-- Authorization: Bearer {token_id}|{token_plano}
+- para que funcione correctamente esta libreria necesitas ejecutar los siguientes scripts
 
-### El middleware valida:
+```sql
+-- tabla de tokens para auth MySQL
+create table tokens(
+id_token int auto_increment primary key,
+id_usuario int not null,
+token varchar(255) not null unique,
+fingerprint char(64) null,
+created_at datetime,
+expires_at datetime,
+is_active bool
+);
 
-- Que exista el header Authorization.
+-- procedimiento almacenado necesario para el funcionamiento
+CREATE PROCEDURE `sp_generate_token`(
+in p_id_usuario int,
+in p_token varchar(255),
+in p_fingerprint char(64),
+in p_expires_at datetime
+)
+begin
+	declare p_id_token int;
+	insert into tokens(id_usuario, token, fingerprint,created_at, expires_at, is_active)
+	values(p_id_usuario, p_token, p_fingerprint ,now(), p_expires_at, 1);
 
-- Que el token tenga formato válido (token_id|token_plano).
+	set p_id_token = LAST_INSERT_ID();
+	select p_id_token as id_token;
+END
 
-- Que el token exista en la base de datos, esté activo y no haya expirado.
+-- procedimiento almacenado necesario para validar
 
-#### Ejemplo de rutas protegidas
+CREATE PROCEDURE `sp_validate_token`(
+in p_id_token int
+)
+begin
 
-```php
-use gabogalro\Router\Router;
-use app\Controllers\UserController;
-use gabogalro\AuthMiddleware\AuthMiddleware;
-
-$router = new Router();
-
-$router->group('/api', function ($router) {
-    $router->group('/users', function ($router) {
-        // Ruta pública
-        $router->post('/register', [UserController::class, 'UsersMember']);
-
-        // Ruta protegida por token
-        $router->get('/get', [UserController::class, 'GetUserById'])
-               ->withMiddleware('AuthMiddleware');
-    });
-});
-
-// Dispatcher principal
-$router->dispatch($_SERVER['REQUEST_METHOD'], $_SERVER['REQUEST_URI']);
-
-
+	select t.token, t.fingerprint
+	from tokens t
+	where t.id_token = p_id_token
+	and t.is_active = 1
+	and t.expires_at > now();
+END
 ```
 
-## Respuestas del middleware
-
-| Código HTTP | Condición                 | Respuesta JSON                                               |
-| ----------- | ------------------------- | ------------------------------------------------------------ |
-| 400         | Header malformado         | `{ "error": "Bad Request: Malformed Authorization header" }` |
-| 401         | Header ausente            | `{ "error": "Unauthorized: Token missing" }`                 |
-| 403         | Token inválido o expirado | `{ "error": "Forbidden: Invalid or expired token" }`         |
-| 200         | Token válido              | Continúa al siguiente middleware o controlador               |
-
-### Generación y validación de tokens
-
-- Cada token generado sigue el formato:
-
-```markdown
-{token_id}|{token_plano}
-```
-
-### Ejemplo de generación de token
+#### Ejemplo de generacion de token en un login
 
 ```php
+use Exception;
+use gabogalro\SQLHelpers\DB; // -> libreria para el uso de SQL
 use gabogalro\Token\Token;
 
-$token = Token::generate_token($user_id);
-// Devuelve algo como: 12|f4b1e7c3a4d2...
+ public function login($request)
+    {
+        try {
+            $user_data = [
+                'email' => $request['email'],
+                'password' => $request['password']
+            ];
+            if (empty($user_data['email']) || empty($user_data['password'])) {
+                throw new Exception('Email y contraseña son obligatorios');
+            }
+            $result = DB::selectOne('call sp_login(?)', $user_data['email']); //-> parte de la libreria SQL
+            if (!empty($result)) {
+                $user = $result;
+                if (password_verify($user_data['password'], $user['password'])) {
+                    $token = Token::generate_token($user['id_usuario']); // -> generamos el token aqui en base al id_usuario
+                } else {
+                    throw new Exception('Credenciales invalidas');
+                }
+            } else {
+                throw new Exception('Usuario inexistente');
+            }
+            return [
+                'token' => $token,
+                'id_usuario' => $user['id_usuario']
+            ];
+        } catch (Exception $ex) {
+            throw new Exception($ex->getMessage());
+        }
+    }
+
 
 ```
 
-### Validación automática en rutas protegidas mediante AuthMiddleware.
-
-### Ejemplo de logout
+#### Ejemplo de validacion de token en middleware personalizado
 
 ```php
-use gabogalro\Auth\Auth;
+<?php
 
-Auth::logout($token);
+namespace app\Middlewares;
+
+use gabogalro\Token\Token;
+use app\Middlewares\Middlewares;
+use Exception;
+use gabogalro\responseHelpers\Response;
+
+class AuthMiddleware implements Middlewares
+{
+    /**
+     * Summary of handle
+     * @param mixed $requestHeaders
+     * @param mixed $next
+     */
+    public static function handle($requestHeaders, $next)
+    {
+        try {
+            if (!isset($requestHeaders['Authorization'])) {
+                throw new Exception('Forbbiden');
+            }
+
+            $authHeader = $requestHeaders['Authorization'];
+
+            if (preg_match('/Bearer\s(\S+)/', $authHeader, $matches)) {
+                $token = $matches[1];
+
+                if (Token::validate_token($token)) {
+                    return $next(); // si el token es valido da acceso
+                }
+            }
+        } catch (Exception $ex) {
+            echo Response::error('Error', $ex->getMessage(), 403);
+        }
+    }
+}
 
 ```
 
-### Flujo recomendado
+#### Ejemplo de invalidacion de token
 
-- Register → Crear usuario.
-
-- Login → Generar token token_id|token_plano.
-
-- Ruta protegida → Enviar token en header Authorization.
-
-- Logout → Invalidar token cuando el usuario cierra sesión.
+```php
+ public function logout($token)
+    {
+        Token::invalidate_token($token); //-> esto destruye la sesion activa del token de forma logica
+    }
+```
 
 ## Requisitos previos
 
 - PHP 7.4 o superior
 - Composer
-- [php-api-router](https://github.com/EduardoGalindo25/php-api-router)
 
 ## License
 

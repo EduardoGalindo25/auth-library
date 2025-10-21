@@ -4,20 +4,20 @@
         "Read more about it at https://getcomposer.org/doc/01-basic-usage.md#installing-dependencies",
         "This file is @generated automatically"
     ],
-    "content-hash": "5bea68a7dba7ea1298c78ad517a818fc",
+    "content-hash": "c8acfef8146c710028c42127c5c011b4",
     "packages": [
         {
             "name": "gabogalro/sql-helpers",
-            "version": "v1.0.0",
+            "version": "v1.0.1",
             "source": {
                 "type": "git",
                 "url": "https://github.com/EduardoGalindo25/sql-helpers.git",
-                "reference": "e0d90dc3fdb424e98246fcb095255ad38be7c69a"
+                "reference": "914da3c6d3106b29e60b2d12cf5099e556484e3c"
             },
             "dist": {
                 "type": "zip",
-                "url": "https://api.github.com/repos/EduardoGalindo25/sql-helpers/zipball/e0d90dc3fdb424e98246fcb095255ad38be7c69a",
-                "reference": "e0d90dc3fdb424e98246fcb095255ad38be7c69a",
+                "url": "https://api.github.com/repos/EduardoGalindo25/sql-helpers/zipball/914da3c6d3106b29e60b2d12cf5099e556484e3c",
+                "reference": "914da3c6d3106b29e60b2d12cf5099e556484e3c",
                 "shasum": ""
             },
             "require": {
@@ -26,7 +26,7 @@
             "type": "library",
             "autoload": {
                 "psr-4": {
-                    "gabogalro\\responseHelpers\\": "src/"
+                    "gabogalro\\SQLHelpers\\": "src/"
                 }
             },
             "notification-url": "https://packagist.org/downloads/",
@@ -42,9 +42,9 @@
             "description": "SQL helper for native PHP",
             "support": {
                 "issues": "https://github.com/EduardoGalindo25/sql-helpers/issues",
-                "source": "https://github.com/EduardoGalindo25/sql-helpers/tree/v1.0.0"
+                "source": "https://github.com/EduardoGalindo25/sql-helpers/tree/v1.0.1"
             },
-            "time": "2025-10-03T15:58:27+00:00"
+            "time": "2025-10-15T03:26:18+00:00"
         }
     ],
     "packages-dev": [

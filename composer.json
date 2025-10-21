@@ -1,6 +1,6 @@
 {
-    "name": "gabogalro/auth-middleware",
-    "description": "Authentication middleware for PHP applications.",
+    "name": "gabogalro/auth-library",
+    "description": "Generate tokens library for PHP authentication.",
     "type": "library",
     "license": "MIT",
     "authors": [
@@ -15,7 +15,7 @@
     },
     "autoload": {
         "psr-4": {
-            "gabogalro\\responseHelpers\\": "src/"
+            "gabogalro\\authLibrary\\": "src/"
         }
     },
     "require-dev": {
