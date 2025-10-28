@@ -40,7 +40,7 @@ class Token
 
             [$id_token] = explode('|', $token, 2);
 
-            $result = DB::selectOne("SELECT id_usuario, fingerprint, is_active FROM tokens WHERE id_token = ?", [$id_token]);
+            $result = DB::selectOne("SELECT id_usuario, fingerprint, is_active FROM tokens WHERE id_token = ?", $id_token);
 
             if (!$result || !$result['is_active']) {
                 throw new Exception('Forbbiden');
