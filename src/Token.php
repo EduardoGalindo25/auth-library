@@ -8,15 +8,16 @@ use Exception;
 class Token
 {
 
-    public static function generate_token($id_usuario)
+    public static function generate_token($id_usuario, $fingerprint = null)
     {
         try {
             $token = bin2hex(random_bytes(64));
             $hashed_token = password_hash($token, PASSWORD_BCRYPT);
             $expire_time = date('Y-m-d H:i:s', strtotime('+12 hour'));
 
-
-            $fingerprint = hash('sha256', $_SERVER['REMOTE_ADDR'] . $_SERVER['HTTP_USER_AGENT']);
+            if (!$fingerprint) {
+                $fingerprint = hash('sha256', ($_SERVER['REMOTE_ADDR'] ?? '') . ($_SERVER['HTTP_USER_AGENT'] ?? ''));
+            }
             $result = DB::selectAll("call sp_generate_token(?, ?, ?, ?)", [
                 $id_usuario,
                 $hashed_token,
@@ -35,7 +36,7 @@ class Token
     {
         try {
             if (strpos($token, '|') === false) {
-                throw new Exception('Forbbiden');
+                throw new Exception('Forbidden');
             }
 
             [$id_token] = explode('|', $token, 2);
@@ -43,7 +44,7 @@ class Token
             $result = DB::selectOne("SELECT id_usuario, fingerprint, is_active FROM tokens WHERE id_token = ?", $id_token);
 
             if (!$result || !$result['is_active']) {
-                throw new Exception('Forbbiden');
+                throw new Exception('Forbidden');
             }
             DB::statement("UPDATE tokens SET is_active = 0 WHERE id_token = ?", [$id_token]);
             return true;
@@ -52,31 +53,32 @@ class Token
         }
     }
 
-    public static function validate_token($token)
+    public static function validate_token($token, $client_fingerprint = null)
     {
 
         try {
             if (strpos($token, '|') === false) {
-                throw new Exception('Forbbiden');
+                throw new Exception('Forbidden');
             }
 
             [$id_token, $token_plain] = explode('|', $token, 2);
 
             $result = DB::selectOne("call sp_validate_token(?)", $id_token);
             if (empty($result)) {
-                throw new Exception('Forbbiden');
+                throw new Exception('Forbidden');
             }
-            $current_fingerprint = hash('sha256', $_SERVER['REMOTE_ADDR'] . $_SERVER['HTTP_USER_AGENT']);
-
-            if ($result['fingerprint'] !== $current_fingerprint) {
-                Token::invalidate_token($token);
-                throw new Exception('Forbbiden');
+            if (!$client_fingerprint) {
+                $client_fingerprint = hash('sha256', ($_SERVER['REMOTE_ADDR'] ?? '') . ($_SERVER['HTTP_USER_AGENT'] ?? ''));
+            }
+            if ($result['fingerprint'] !== $client_fingerprint) {
+                self::invalidate_token($token);
+                throw new Exception('Forbidden');
             }
 
             if (password_verify($token_plain, $result['token'])) {
                 return true;
             } else {
-                throw new Exception('Forbbiden');
+                throw new Exception('Forbidden');
             }
         } catch (Exception $ex) {
             throw new Exception($ex->getMessage());
