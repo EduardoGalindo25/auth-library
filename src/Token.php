@@ -8,20 +8,16 @@ use Exception;
 class Token
 {
 
-    public static function generate_token($id_usuario, $fingerprint = null)
+    public static function generate_token($id_usuario)
     {
         try {
             $token = bin2hex(random_bytes(64));
             $hashed_token = password_hash($token, PASSWORD_BCRYPT);
             $expire_time = date('Y-m-d H:i:s', strtotime('+12 hour'));
 
-            if (!$fingerprint) {
-                $fingerprint = hash('sha256', ($_SERVER['REMOTE_ADDR'] ?? '') . ($_SERVER['HTTP_USER_AGENT'] ?? ''));
-            }
-            $result = DB::selectAll("call sp_generate_token(?, ?, ?, ?)", [
+            $result = DB::selectAll("call sp_generate_token(?, ?, ?)", [
                 $id_usuario,
                 $hashed_token,
-                $fingerprint,
                 $expire_time
             ]);
             $token_id = $result[0]['id_token'];
@@ -41,7 +37,7 @@ class Token
 
             [$id_token] = explode('|', $token, 2);
 
-            $result = DB::selectOne("SELECT id_usuario, fingerprint, is_active FROM tokens WHERE id_token = ?", $id_token);
+            $result = DB::selectOne("SELECT id_usuario, is_active FROM tokens WHERE id_token = ?", $id_token);
 
             if (!$result || !$result['is_active']) {
                 throw new Exception('Forbidden');
@@ -53,7 +49,7 @@ class Token
         }
     }
 
-    public static function validate_token($token, $client_fingerprint = null)
+    public static function validate_token($token)
     {
 
         try {
@@ -65,13 +61,6 @@ class Token
 
             $result = DB::selectOne("call sp_validate_token(?)", $id_token);
             if (empty($result)) {
-                throw new Exception('Forbidden');
-            }
-            if (!$client_fingerprint) {
-                $client_fingerprint = hash('sha256', ($_SERVER['REMOTE_ADDR'] ?? '') . ($_SERVER['HTTP_USER_AGENT'] ?? ''));
-            }
-            if ($result['fingerprint'] !== $client_fingerprint) {
-                self::invalidate_token($token);
                 throw new Exception('Forbidden');
             }
 
